@@ -1,5 +1,7 @@
-import * as sql from "sqlite3";
-import * as fs from "fs";
-import { nanoid } from "./id.js";
-const generatedId = nanoid();
-console.log(generatedId);
+import ms from "ms";
+import { nanoid } from "nanoid";
+
+const ttl = ms("1d");
+const uid = nanoid();
+
+console.log(ttl);
