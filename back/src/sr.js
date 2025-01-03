@@ -1,6 +1,20 @@
 import { Telegraf, Markup } from "telegraf";
+import https from "https";
+import HttpsProxyAgent from "https-proxy-agent";
 
-const bot = new Telegraf("7312402670:AAEgb72S8pIWWdsxDYK17d-nmLTB5PYxI0I");
+// Прокси-сервер, через который будет подключаться бот
+const proxy = "68.225.17.237:4228"; // Укажи свой прокси
+
+// Создаем агент с прокси
+const agent = new HttpsProxyAgent(proxy);
+
+// Создаем бота с прокси
+const bot = new Telegraf("7312402670:AAEgb72S8pIWWdsxDYK17d-nmLTB5PYxI0I", {
+	telegram: {
+		agent,
+	},
+});
+
 let players = [];
 let leaders = [];
 let gameState = "waiting_for_players"; // Состояние игры
@@ -140,7 +154,7 @@ bot.on("text", (ctx) => {
 					players.forEach((player) => {
 						bot.telegram.sendMessage(
 							`@${player}`,
-							"Новая игра начинается! Нажмите 'Сыграть', чтобы начать снова.",
+							'Новая игра начинается! Нажмите "Сыграть", чтобы начать снова.',
 							Markup.inlineKeyboard([
 								[Markup.button.callback("Сыграть", "start_new_game")],
 							]),
@@ -182,7 +196,7 @@ bot.action("confirm_teams", (ctx) => {
 
 			// Кнопка для начала новой игры
 			ctx.reply(
-				"Новая игра начинается! Нажмите 'Сыграть', чтобы начать снова.",
+				'Новая игра начинается! Нажмите "Сыграть", чтобы начать снова.',
 				Markup.inlineKeyboard([
 					[Markup.button.callback("Сыграть", "start_new_game")],
 				]),
@@ -196,7 +210,7 @@ bot.action("start_new_game", (ctx) => {
 	players = []; // Сбросить список игроков
 	gameState = "waiting_for_players"; // Установить начальное состояние игры
 	ctx.reply(
-		"Начинаем набирать игроков для новой игры. Нажмите 'Присоединиться'.",
+		'Начинаем набирать игроков для новой игры. Нажмите "Присоединиться".',
 	);
 	// Кнопка для присоединения
 	ctx.reply(
@@ -205,81 +219,6 @@ bot.action("start_new_game", (ctx) => {
 			[Markup.button.callback("Присоединиться", "join_game")],
 		]),
 	);
-});
-
-// Лидер инициирует перемещение игрока
-bot.action(/move_to_(team1|team2)_(.*)/, (ctx) => {
-	const username = ctx.from.username;
-	const playerToMove = ctx.match[2];
-	const targetTeam = ctx.match[1]; // "team1" или "team2"
-
-	if (!leaders.includes(username)) {
-		return ctx.reply("Только лидеры могут менять состав команд.");
-	}
-
-	// Проверяем, кто инициировал перемещение
-	const fromTeam = targetTeam === "team1" ? "team2" : "team1"; // Если перемещение в команду 1, то из команды 2 и наоборот
-
-	// Проверяем, что игрок находится в правильной команде
-	if (
-		(fromTeam === "team1" && players.indexOf(playerToMove) < 5) ||
-		(fromTeam === "team2" && players.indexOf(playerToMove) >= 5)
-	) {
-		pendingMove = {
-			player: playerToMove,
-			fromTeam,
-			toTeam: targetTeam,
-			confirmedBy: [username],
-		};
-
-		// Уведомление лидеров о необходимости подтвердить перемещение
-		ctx.reply(
-			`${playerToMove} должен быть перемещен из ${fromTeam} в ${targetTeam}. Лидер 2, подтвердите это.`,
-			Markup.inlineKeyboard([
-				[Markup.button.callback("Подтвердить перемещение", "confirm_move")],
-			]),
-		);
-	} else {
-		ctx.reply("Игрок не находится в нужной команде.");
-	}
-});
-
-// Подтверждение перемещения
-bot.action("confirm_move", (ctx) => {
-	if (!pendingMove) {
-		return ctx.reply("Нет ожидающих перемещений.");
-	}
-
-	const username = ctx.from.username;
-
-	// Проверяем, что это второй лидер
-	if (pendingMove.confirmedBy.includes(username)) {
-		return ctx.reply("Вы уже подтвердили перемещение.");
-	}
-
-	// Подтверждаем перемещение
-	pendingMove.confirmedBy.push(username);
-	if (pendingMove.confirmedBy.length === 2) {
-		// Окончательно перемещаем игрока
-		if (pendingMove.toTeam === "team1") {
-			players.splice(players.indexOf(pendingMove.player), 1);
-			players.splice(0, 0, pendingMove.player);
-		} else {
-			players.splice(players.indexOf(pendingMove.player), 1);
-			players.push(pendingMove.player);
-		}
-
-		// Информируем обоих лидеров и всех игроков
-		bot.telegram.sendMessage(
-			`@${leaders[0]}`,
-			`Игрок ${pendingMove.player} перемещен в ${pendingMove.toTeam}.`,
-		);
-		bot.telegram.sendMessage(
-			`@${leaders[1]}`,
-			`Игрок ${pendingMove.player} перемещен в ${pendingMove.toTeam}.`,
-		);
-		pendingMove = null; // Сбросить текущую перемещенную заявку
-	}
 });
 
 // Запуск бота
