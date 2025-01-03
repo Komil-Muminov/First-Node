@@ -1,5 +1,0 @@
-package-lock.json
-package.json
-*.log
-node_modules/
-.env
