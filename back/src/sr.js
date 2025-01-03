@@ -1,13 +1,12 @@
 import { Telegraf, Markup } from "telegraf";
 import https from "https";
-import HttpsProxyAgent from "https-proxy-agent";
+import { HttpsProxyAgent } from "https-proxy-agent";
 
 // Прокси-сервер, через который будет подключаться бот
-const proxy = "68.225.17.237:4228"; // Укажи свой прокси
+const proxy = "http://68.225.17.237:4228";
 
 // Создаем агент с прокси
 const agent = new HttpsProxyAgent(proxy);
-
 // Создаем бота с прокси
 const bot = new Telegraf("7312402670:AAEgb72S8pIWWdsxDYK17d-nmLTB5PYxI0I", {
 	telegram: {
